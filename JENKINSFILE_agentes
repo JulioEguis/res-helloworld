@@ -6,6 +6,7 @@ pipeline {
     stages {
 
         stage('Get Code') {
+            agent { label 'master' }   // o 'built-in' según Jenkins
             steps {
                 git 'https://github.com/JulioEguis/helloworld.git'
                 echo WORKSPACE
