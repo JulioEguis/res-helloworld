@@ -35,7 +35,7 @@ pipeline {
                             unstash 'code'
                             bat '''
                                 set PYTHONPATH=%WORKSPACE%
-                                pytest --junitxml=result-unit.xml test\\unit
+                                C:\\Users\\julioe\\AppData\\Local\\Programs\\Python\\Python313\\Scripts\\pytest.exe --junitxml=result-unit.xml test\\unit
                             '''
                             stash name: 'unit-res', includes: 'result-unit.xml'
                         }
