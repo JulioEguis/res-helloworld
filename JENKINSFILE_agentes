@@ -25,10 +25,8 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     unstash 'code'
-                    bat '''
-                        set PYTHONPATH=%WORKSPACE%
-                        C:\\Users\\julioe\\AppData\\Local\\Programs\\Python\\Python313\\Scripts\\pytest.exe --junitxml=result-unit.xml test\\unit
-                    '''
+                    bat 'set PYTHONPATH=%WORKSPACE%'
+                    bat 'C:\\Users\\julioe\\AppData\\Local\\Programs\\Python\\Python313\\Scripts\\pytest.exe --junitxml=result-unit.xml test\\unit'
                     stash name: 'unit-res', includes: 'result-unit.xml'
                 }
             }
