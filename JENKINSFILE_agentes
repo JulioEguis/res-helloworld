@@ -1,21 +1,21 @@
 pipeline {
-    agent { label 'linux' }
+    agent none
 
     options { skipDefaultCheckout() }
 
     stages {
 
         stage('Get Code') {
-            agent { label 'master' }   // o 'built-in' según Jenkins
+            agent { label 'linux' }
             steps {
                 git 'https://github.com/JulioEguis/helloworld.git'
-                echo WORKSPACE
-                bat 'dir'
+                sh 'ls -la'
                 stash name: 'code', includes: '**'
             }
         }
 
         stage('Build') {
+            agent { label 'linux' }
             steps {
                 echo 'Eyyy, esto es Python. No hay que compilar nada!!!'
             }
@@ -28,11 +28,10 @@ pipeline {
                     agent { label 'agent1' }
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            unstash name:'code'
+                            unstash 'code'
                             sh '''
-                                ls -la
                                 export PYTHONPATH=${WORKSPACE}
-                                /home/agent1/.local/bin/pytest --junitxml=result-unit.xml test/unit
+                                pytest --junitxml=result-unit.xml test/unit
                             '''
                             stash name: 'unit-res', includes: 'result-unit.xml'
                         }
@@ -43,28 +42,29 @@ pipeline {
                     agent { label 'agent2' }
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            unstash name:'code'
+                            unstash 'code'
                             sh '''
                                 export FLASK_APP=app/api.py
-                                /home/agent2/.local/bin/flask run &
+                                flask run &
 
                                 sleep 4
 
-                                java -jar /home/agent2/wiremock/wiremock-standalone-3.3.1.jar --port 9090 --root-dir /home/agent2/wiremock &
-                                export PYTHONPATH=${WORKSPACE}
-                                
+                                java -jar wiremock.jar --port 9090 &
+
                                 sleep 15
 
-                                /home/agent2/.local/bin/pytest --junitxml=result-rest.xml test/rest
+                                export PYTHONPATH=${WORKSPACE}
+                                pytest --junitxml=result-rest.xml test/rest
                             '''
-                          }
-                            stash name: 'rest-res', includes: 'result-rest.xml' 
+                            stash name: 'rest-res', includes: 'result-rest.xml'
                         }
                     }
                 }
             }
+        }
 
         stage('Results') {
+            agent { label 'linux' }
             steps {
                 unstash 'unit-res'
                 unstash 'rest-res'
