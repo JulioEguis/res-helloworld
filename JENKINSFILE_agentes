@@ -25,26 +25,19 @@ pipeline {
             }
         }
 
-        stage('Tests') {
-            parallel {
-
-                stage('Unit') {
-                    agent { label 'agent1' }
-                    steps {
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            unstash 'code'
-                            bat '''
-                                set PYTHONPATH=%WORKSPACE%
-                                C:\Users\julioe\AppData\Local\Programs\Python\Python313\Scripts\pytest.exe ^
-                                --junitxml=result-unit.xml ^
-                                --timeout=30 ^
-                                test\unit
-                            '''
-                            stash name: 'unit-res', includes: 'result-unit.xml'
-                        }
-                    }
+        stage('Unit') {
+            agent { label 'agent1' }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    unstash 'code'
+                    bat '''
+                        set PYTHONPATH=%WORKSPACE%
+                        C:\\Users\\julioe\\AppData\\Local\\Programs\\Python\\Python313\\Scripts\\pytest.exe --junitxml=result-unit.xml test\\unit
+                    '''
+                    stash name: 'unit-res', includes: 'result-unit.xml'
                 }
-
+            }
+        }    
                 stage('Rest') {
                     agent { label 'agent2' }
                     steps {
