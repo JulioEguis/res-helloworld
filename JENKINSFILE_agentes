@@ -3,26 +3,16 @@ pipeline {
 
     options { skipDefaultCheckout() }
 
-     stage('Get Code') {
-    agent any // Se ejecuta en cualquier agente, que será Linux/Docker
-    steps {
-        script {
-            // 1. Obtiene la ruta del ejecutable 'git' configurado para Linux
-            def gitTool = tool name: 'Git_Linux_Docker', type: 'hudson.plugins.git.GitTool'
-            
-            // 2. Inyecta esa ruta en el PATH del agente actual
-            // Esto asegura que cuando se llame a 'git', el agente use el binario 'git' y no 'git.exe'
-            env.PATH = "${gitTool}:${env.PATH}" 
+     stages {
+        stage('Get Code') {
+            steps {
+                // Obtener código del repo
+                git 'https://github.com/anieto-unir/helloworld.git'
+	            echo WORKSPACE
+                bat 'dir'
+                stash name:'code', includes:'**'
+            }
         }
-
-        // Obtener código del repo - Ahora el paso 'git' usará el binario correcto
-        git 'https://github.com/JulioEguis/helloworld.git'
-        
-        echo "El código se ha clonado en: ${WORKSPACE}"
-        sh 'ls -la' // Comando correcto para ver el contenido en un agente Linux
-        stash name:'code', includes:'**'
-    }
-}
     
         stage('Build') {
            steps {
