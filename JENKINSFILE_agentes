@@ -58,6 +58,11 @@ pipeline {
 
                                 set PYTHONPATH=%WORKSPACE%
                                 pytest --junitxml=result-rest.xml test\\rest
+
+                                :: MATAR servicios para que el pipeline termine
+                                taskkill /IM flask.exe /F
+                                taskkill /IM java.exe /F
+
                             '''
                             stash name: 'rest-res', includes: 'result-rest.xml'
                         }
