@@ -8,7 +8,7 @@ pipeline {
         stage('Get Code') {
             agent { label 'master' }   //  SOLO en Jenkins controller (Windows)
             steps {
-                git 'https://github.com/JulioEguis/helloworld.git'
+                git 'https://github.com/JulioEguis/res-helloworld.git'
                 echo WORKSPACE
                 bat 'dir'
                 stash name: 'code', includes: '**'
