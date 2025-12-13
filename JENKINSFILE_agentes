@@ -6,16 +6,17 @@ pipeline {
     stages {
 
         stage('Get Code') {
-            agent { label 'linux' }
+            agent { label 'master' }   //  SOLO en Jenkins controller (Windows)
             steps {
                 git 'https://github.com/JulioEguis/helloworld.git'
-                sh 'ls -la'
+                echo WORKSPACE
+                bat 'dir'
                 stash name: 'code', includes: '**'
             }
         }
 
         stage('Build') {
-            agent { label 'linux' }
+            agent { label 'master' }
             steps {
                 echo 'Eyyy, esto es Python. No hay que compilar nada!!!'
             }
@@ -25,7 +26,7 @@ pipeline {
             parallel {
 
                 stage('Unit') {
-                    agent { label 'agent1' }
+                    agent { label 'agent1' } // Linux
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             unstash 'code'
@@ -39,7 +40,7 @@ pipeline {
                 }
 
                 stage('Rest') {
-                    agent { label 'agent2' }
+                    agent { label 'agent2' } // Linux
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             unstash 'code'
@@ -47,11 +48,11 @@ pipeline {
                                 export FLASK_APP=app/api.py
                                 flask run &
 
-                                sleep 4
+                                sleep 5
 
-                                java -jar wiremock.jar --port 9090 &
+                                java -jar wiremock-standalone.jar --port 9090 &
 
-                                sleep 15
+                                sleep 10
 
                                 export PYTHONPATH=${WORKSPACE}
                                 pytest --junitxml=result-rest.xml test/rest
@@ -64,7 +65,7 @@ pipeline {
         }
 
         stage('Results') {
-            agent { label 'linux' }
+            agent { label 'master' }
             steps {
                 unstash 'unit-res'
                 unstash 'rest-res'
