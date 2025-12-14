@@ -1,12 +1,10 @@
 pipeline {
-    // Flujo principal sin agente asignado inicialmente
     agent none 
 
     options { skipDefaultCheckout() }
 
     stages {
         stage('Get Code') {
-            // Asignar al Master (Windows)
             agent { label 'master' } 
             steps {
                 git 'https://github.com/JulioEguis/helloworld.git'
@@ -17,7 +15,6 @@ pipeline {
         }
     
         stage('Build') {
-            // Asignar al Master (Windows)
             agent { label 'master' } 
             steps {
                 echo 'Eyyy, esto es Python. No hay que compilar nada!!!'
@@ -49,26 +46,23 @@ pipeline {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             unstash name:'code'
                             sh '''
-                                echo "--- CONTENIDO DE ORIGEN (REPO) ---"
-                                ls -la test/wiremock/mappings/
-                                
-                                # Copia recursiva de mappings al directorio root de WireMock
+                                # 1. COPIAR MAPPINGS (Permisos ya corregidos manualmente)
                                 cp -r test/wiremock/* /home/agent2/wiremock/
 
-                                echo "--- CONTENIDO DE DESTINO (WIREMOCK) ---"
-                                ls -la /home/agent2/wiremock/mappings/
-                                
+                                # 2. INICIAR FLASK
                                 export FLASK_APP=app/api.py
                                 /usr/bin/flask run & 
 
                                 sleep 4
 
+                                # 3. INICIAR WIREMOCK (Usando el directorio que ya tiene los stubs copiados)
                                 java -jar /home/agent2/wiremock/wiremock-standalone-3.3.1.jar --port 9090 --root-dir /home/agent2/wiremock &
                                 
                                 export PYTHONPATH=${WORKSPACE}
                                 
                                 sleep 15
                                 
+                                # 4. EJECUTAR PRUEBAS
                                 /usr/bin/pytest --junitxml=result-rest.xml test/rest
                             '''
                             stash name:'rest-res', includes:'result-rest.xml'
@@ -79,7 +73,6 @@ pipeline {
         }
 
         stage('Results') {
-            // Asignar al Master (Windows)
             agent { label 'master' } 
             steps {
                 unstash name:'unit-res'
