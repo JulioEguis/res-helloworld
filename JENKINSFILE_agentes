@@ -3,13 +3,17 @@ pipeline {
 
     options { skipDefaultCheckout() }
 
-     stages {
+    stages {
         stage('Get Code') {
             steps {
-                // Obtener código del repo
+                // Obtener código del repo (funciona solo si Git está configurado correctamente en Jenkins)
                 git 'https://github.com/anieto-unir/helloworld.git'
-	            echo WORKSPACE
-                bat 'dir'
+                echo WORKSPACE
+                
+                // *** CORRECCIÓN NECESARIA ***
+                // Reemplazar 'bat dir' (Windows) por 'sh ls -la' (Linux)
+                sh 'ls -la'
+                
                 stash name:'code', includes:'**'
             }
         }
