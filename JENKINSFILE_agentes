@@ -22,54 +22,53 @@ pipeline {
         }
         
         stage('Tests')
-        {
-            parallel
-            {
-                stage('Unit') {
-                    agent {label 'agent1'}
-                    steps {
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            unstash name:'code'
-                            sh '''
-                                ls -la
-                                export PYTHONPATH=${WORKSPACE}
-                                /usr/bin/pytest --junitxml=result-unit.xml test/unit
-                            '''
-                            stash name:'unit-res', includes:'result-unit.xml'
-                        }
-                    }
-                }   
-                
-                stage('Rest') {
-        agent {label 'agent2'}
-        steps {
-            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                unstash name:'code'
-                sh '''
-                    # 1. COPIAR MAPPINGS (Esto ahora funciona gracias a chown)
-                    cp -r test/wiremock/* /home/agent2/wiremock/
+{
+    parallel
+    {
+        stage('Unit') {
+            agent {label 'agent1'}
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    unstash name:'code'
+                    sh '''
+                        ls -la
+                        export PYTHONPATH=${WORKSPACE}
+                        # 🚨 Cambio a la ruta específica del profesor
+                        /home/jenkins/.local/bin/pytest --junitxml=result-unit.xml test/unit
+                    '''
+                    stash name:'unit-res', includes:'result-unit.xml'
+                }
+            }
+        }   
+        
+        stage('Rest') {
+            agent {label 'agent2'}
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    unstash name:'code'
+                    sh '''
+                        # Mantenemos la copia de stubs (cp -r) porque no tienes el mount de volumen
+                        cp -r test/wiremock/* /home/agent2/wiremock/
 
-                    # 2. INICIAR FLASK
-                    export FLASK_APP=app/api.py
-                    /usr/bin/flask run & 
+                        # 🚨 Cambio a la ruta específica del profesor
+                        export FLASK_APP=app/api.py
+                        /home/jenkins/.local/bin/flask run & 
 
-                    sleep 4
+                        sleep 4
 
-                    # 3. 🚨 CORRECCIÓN FINAL DE LA RUTA DEL JAR
-                    # Volvemos a la ruta /home/agent2/wiremock/ que es donde EXISTE el JAR
-                    java -jar /home/agent2/wiremock/wiremock-standalone-3.3.1.jar --port 9090 --root-dir /home/agent2/wiremock &
-                    
-                    export PYTHONPATH=${WORKSPACE}
-                    
-                    sleep 15
-                    
-                    # 4. EJECUTAR PRUEBAS
-                    /usr/bin/pytest --junitxml=result-rest.xml test/rest
-                '''
-                stash name:'rest-res', includes:'result-rest.xml'
+                        java -jar /home/agent2/wiremock/wiremock-standalone-3.3.1.jar --port 9090 --root-dir /home/agent2/wiremock &
+                        
+                        export PYTHONPATH=${WORKSPACE}
+                        
+                        sleep 15
+                        
+                        # 🚨 Cambio a la ruta específica del profesor
+                        /home/jenkins/.local/bin/pytest --junitxml=result-rest.xml test/rest
+                    '''
+                    stash name:'rest-res', includes:'result-rest.xml'
                 }
             }   
-        }
+        }       
     }
 }
 
