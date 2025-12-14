@@ -41,36 +41,37 @@ pipeline {
                 }   
                 
                 stage('Rest') {
-                    agent {label 'agent2'}
-                    steps {
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            unstash name:'code'
-                            sh '''
-                                # 1. COPIAR MAPPINGS (Permisos ya corregidos manualmente)
-                                cp -r test/wiremock/* /home/agent2/wiremock/
+        agent {label 'agent2'}
+        steps {
+            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                unstash name:'code'
+                sh '''
+                    # 1. COPIAR MAPPINGS (Esto ahora funciona gracias a chown)
+                    cp -r test/wiremock/* /home/agent2/wiremock/
 
-                                # 2. INICIAR FLASK
-                                export FLASK_APP=app/api.py
-                                /usr/bin/flask run & 
+                    # 2. INICIAR FLASK
+                    export FLASK_APP=app/api.py
+                    /usr/bin/flask run & 
 
-                                sleep 4
+                    sleep 4
 
-                                # 3. INICIAR WIREMOCK (Usando el directorio que ya tiene los stubs copiados)
-                                java -jar /home/jenkins/wiremock/wiremock-standalone-3.3.1.jar --port 9090 --root-dir /home/jenkins/wiremock &
-                                
-                                export PYTHONPATH=${WORKSPACE}
-                                
-                                sleep 15
-                                
-                                # 4. EJECUTAR PRUEBAS
-                                /usr/bin/pytest --junitxml=result-rest.xml test/rest
-                            '''
-                            stash name:'rest-res', includes:'result-rest.xml'
-                        }
-                    }   
-                }       
-            }
+                    # 3. 🚨 CORRECCIÓN FINAL DE LA RUTA DEL JAR
+                    # Volvemos a la ruta /home/agent2/wiremock/ que es donde EXISTE el JAR
+                    java -jar /home/agent2/wiremock/wiremock-standalone-3.3.1.jar --port 9090 --root-dir /home/agent2/wiremock &
+                    
+                    export PYTHONPATH=${WORKSPACE}
+                    
+                    sleep 15
+                    
+                    # 4. EJECUTAR PRUEBAS
+                    /usr/bin/pytest --junitxml=result-rest.xml test/rest
+                '''
+                stash name:'rest-res', includes:'result-rest.xml'
+                }
+            }   
         }
+    }
+}
 
         stage('Results') {
             agent { label 'master' } 
