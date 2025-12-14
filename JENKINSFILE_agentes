@@ -1,17 +1,17 @@
 pipeline {
-    agent none // CORRECCIÓN 1: Flujo principal en el Master/Built-in Node
+    // 1. CORRECCIÓN: Flujo principal en el Master para liberar a agent2
+    agent none 
 
     options { skipDefaultCheckout() }
 
     stages {
         stage('Get Code') {
-            agent { label 'master' } // CORRECCIÓN 2: Asignar al Master
+            // Asignar al Master (usando 'master' si renombraste/etiquetaste el nodo 'principal')
+            agent { label 'master' } 
             steps {
                 git 'https://github.com/JulioEguis/helloworld.git'
                 echo WORKSPACE
                 
-                // *** CORRECCIÓN NECESARIA ***
-                // Reemplazar 'bat dir' (Windows) por 'sh ls -la' (Linux)
                 sh 'ls -la'
                 
                 stash name:'code', includes:'**'
@@ -19,10 +19,11 @@ pipeline {
         }
     
         stage('Build') {
-            agent { label 'master' } // CORRECCIÓN 2: Asignar al Master
-           steps {
-              echo 'Eyyy, esto es Python. No hay que compilar nada!!!'
-           }
+            // Asignar al Master
+            agent { label 'master' } 
+            steps {
+                echo 'Eyyy, esto es Python. No hay que compilar nada!!!'
+            }
         }
         
         stage('Tests')
@@ -37,48 +38,47 @@ pipeline {
                             sh '''
                                 ls -la
                                 export PYTHONPATH=${WORKSPACE}
-                                /usr/bin/pytest --junitxml=result-unit.xml test/unit
+                                /usr/bin/pytest --junitxml=result-unit.xml test/unit // RUTA PYTEST OK
                             '''
                             stash name:'unit-res', includes:'result-unit.xml'
-                       }
+                        }
                     }
                 }   
-                
                 
                 stage('Rest') {
                     agent {label 'agent2'}
                     steps {
-                      catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                        unstash name:'code'
-                        sh '''
-                            export FLASK_APP=app/api.py                          
-                            /usr/bin/flask run &
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            unstash name:'code'
+                            sh '''
+                                export FLASK_APP=app/api.py
+                                
+                                /usr/bin/flask run & // RUTA FLASK CORREGIDA
 
-                            sleep 4
+                                sleep 4
 
-                            java -jar /home/agent2/wiremock/wiremock-standalone-3.3.1.jar --port 9090 --root-dir /home/agent2/wiremock & // RUTA WIREMOCK CONFIRMADA
-                            export PYTHONPATH=${WORKSPACE
-                            
-                            sleep 15
-                            
-                            /usr/bin/pytest --junitxml=result-rest.xml test/rest // ¡RUTA CORREGIDA A /usr/bin/pytest!
-                        '''
-                      }
-                      stash name:'rest-res', includes:'result-rest.xml'
-                    }    
-                }                
-                
+                                java -jar /home/agent2/wiremock/wiremock-standalone-3.3.1.jar --port 9090 --root-dir /home/agent2/wiremock & // RUTA WIREMOCK CONFIRMADA
+                                export PYTHONPATH=${WORKSPACE} // CORRECCIÓN: Se añade la llave de cierre
+                                
+                                sleep 15
+                                
+                                /usr/bin/pytest --junitxml=result-rest.xml test/rest // RUTA PYTEST CORREGIDA
+                            '''
+                            stash name:'rest-res', includes:'result-rest.xml'
+                        }
+                    }   
+                }       
             }
         }
 
         stage('Results') {
-            agent { label 'master' } // CORRECCIÓN 2: Asignar al Master
+            // Asignar al Master
+            agent { label 'master' } 
             steps {
                 unstash name:'unit-res'
                 unstash name:'rest-res'
                 junit 'result*.xml' 
             }
         }
-     
     }
 }
