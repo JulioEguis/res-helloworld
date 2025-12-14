@@ -1,36 +1,19 @@
 pipeline {
-    /*
-     * Define que el pipeline no tiene un agente por defecto
-     * y los agentes se especificarán por etapa (stage).
-     */
     agent none 
 
     options { skipDefaultCheckout() }
 
     stages {
-        /*
-         * ETAPA 1: OBTENER CÓDIGO
-         * Esta etapa se ejecuta en el nodo 'master' (Windows) para utilizar el comando 'bat'.
-         * Se utiliza 'master' porque 'bat' (Windows Shell) no es compatible con agentes Linux.
-         */
         stage('Get Code') {
             agent { label 'master' } 
             steps {
-                // Clonar el repositorio de Git.
                 git 'https://github.com/JulioEguis/helloworld.git'
-                // Mostrar la ruta del WORKSPACE.
                 echo WORKSPACE
-                // Listar el contenido del directorio en Windows.
                 bat 'dir' 
-                // Guardar todo el código y archivos en un stash para que esté disponible en otras etapas.
                 stash name:'code', includes:'**'
             }
         }
     
-        /*
-         * ETAPA 2: BUILD
-         * Esta etapa es simbólica para proyectos Python (que no requieren compilación).
-         */
         stage('Build') {
             agent { label 'master' } 
             steps {
@@ -38,64 +21,41 @@ pipeline {
             }
         }
         
-        /*
-         * ETAPA 3: TESTS
-         * Esta etapa ejecuta las pruebas unitarias y de integración (Rest) en paralelo.
-         */
         stage('Tests')
         {
             parallel
             {
-                /*
-                 * SUB-ETAPA: UNITARIAS
-                 * Se ejecuta en el agente Linux 'agent1'.
-                 */
                 stage('Unit') {
                     agent {label 'agent1'}
                     steps {
-                        // Capturar errores para que el pipeline marque UNSTABLE en lugar de FAILURE si fallan las pruebas.
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            // Recuperar el código fuente del stash.
                             unstash name:'code'
                             sh '''
                                 ls -la
-                                # Añadir el WORKSPACE al PYTHONPATH para que Python encuentre los módulos.
                                 export PYTHONPATH=${WORKSPACE}
-                                # Ejecutar Pytest (instalado a nivel de sistema en /usr/bin/pytest en el agente Docker)
                                 /usr/bin/pytest --junitxml=result-unit.xml test/unit
                             '''
-                            // Guardar el archivo de resultados JUnit.
                             stash name:'unit-res', includes:'result-unit.xml'
                         }
                     }
                 }   
                 
-                /*
-                 * SUB-ETAPA: REST (INTEGRACIÓN)
-                 * Se ejecuta en el agente Linux 'agent2'.
-                 */
                 stage('Rest') {
                     agent {label 'agent2'}
                     steps {
-                        // Capturar errores para que el pipeline marque UNSTABLE.
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            // Recuperar el código fuente del stash.
                             unstash name:'code'
                             sh '''
-                                # 1. COPIAR MAPPINGS
-                                # Solución necesaria para copiar los stubs de WireMock desde el WORKSPACE 
-                                # al directorio de WireMock del agente, debido a la configuración de volúmenes de Docker.
+                                # 1. COPIAR MAPPINGS (Permisos ya corregidos manualmente)
                                 cp -r test/wiremock/* /home/agent2/wiremock/
 
                                 # 2. INICIAR FLASK
                                 export FLASK_APP=app/api.py
-                                
-                                /usr/bin/flask run & 
+                                /usr/bin/flask run & 
 
                                 sleep 4
 
-                                # 3. INICIAR WIREMOCK
-                                # Iniciar WireMock en background (&) usando el directorio que ya tiene los stubs copiados.
+                                # 3. INICIAR WIREMOCK (Usando el directorio que ya tiene los stubs copiados)
                                 java -jar /home/agent2/wiremock/wiremock-standalone-3.3.1.jar --port 9090 --root-dir /home/agent2/wiremock &
                                 
                                 export PYTHONPATH=${WORKSPACE}
@@ -103,10 +63,8 @@ pipeline {
                                 sleep 15
                                 
                                 # 4. EJECUTAR PRUEBAS
-                                # Ejecutar las pruebas de integración que dependen de Flask y WireMock.
                                 /usr/bin/pytest --junitxml=result-rest.xml test/rest
                             '''
-                            // Guardar el archivo de resultados JUnit.
                             stash name:'rest-res', includes:'result-rest.xml'
                         }
                     }   
@@ -114,18 +72,11 @@ pipeline {
             }
         }
 
-        /*
-         * ETAPA 4: RESULTADOS
-         * Centraliza y reporta los resultados de las pruebas. Se ejecuta en el Master.
-         */
         stage('Results') {
             agent { label 'master' } 
             steps {
-                // Recuperar los resultados de las pruebas unitarias.
                 unstash name:'unit-res'
-                // Recuperar los resultados de las pruebas de integración.
                 unstash name:'rest-res' 
-                // Procesar los archivos XML para mostrar los resultados en la interfaz de Jenkins.
                 junit 'result*.xml' 
             }
         }
