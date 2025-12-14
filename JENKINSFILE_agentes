@@ -1,25 +1,26 @@
 pipeline {
-    // 1. CORRECCIÓN: Flujo principal en el Master para liberar a agent2
+    // Flujo principal en el Master para liberar a agent2
     agent none 
 
     options { skipDefaultCheckout() }
 
     stages {
         stage('Get Code') {
-            // Asignar al Master (usando 'master' si renombraste/etiquetaste el nodo 'principal')
+            // Asignar al Master (que es Windows en tu caso)
             agent { label 'master' } 
             steps {
                 git 'https://github.com/JulioEguis/helloworld.git'
                 echo WORKSPACE
                 
-                sh 'ls -la'
+                // CORRECCIÓN: Cambiar 'sh' (Linux) por 'bat' (Windows)
+                bat 'dir' 
                 
                 stash name:'code', includes:'**'
             }
         }
     
         stage('Build') {
-            // Asignar al Master
+            // Asignar al Master (Windows)
             agent { label 'master' } 
             steps {
                 echo 'Eyyy, esto es Python. No hay que compilar nada!!!'
@@ -30,6 +31,8 @@ pipeline {
         {
             parallel
             {
+                // Las ramas 'Unit' y 'Rest' se ejecutan en agent1 y agent2 (Linux), 
+                // por lo que ellas sí deben usar 'sh'. Esas ramas ya están correctas.
                 stage('Unit') {
                     agent {label 'agent1'}
                     steps {
@@ -38,7 +41,7 @@ pipeline {
                             sh '''
                                 ls -la
                                 export PYTHONPATH=${WORKSPACE}
-                                /usr/bin/pytest --junitxml=result-unit.xml test/unit // RUTA PYTEST OK
+                                /usr/bin/pytest --junitxml=result-unit.xml test/unit
                             '''
                             stash name:'unit-res', includes:'result-unit.xml'
                         }
@@ -53,16 +56,16 @@ pipeline {
                             sh '''
                                 export FLASK_APP=app/api.py
                                 
-                                /usr/bin/flask run & // RUTA FLASK CORREGIDA
+                                /usr/bin/flask run & 
 
                                 sleep 4
 
-                                java -jar /home/agent2/wiremock/wiremock-standalone-3.3.1.jar --port 9090 --root-dir /home/agent2/wiremock & // RUTA WIREMOCK CONFIRMADA
-                                export PYTHONPATH=${WORKSPACE} // CORRECCIÓN: Se añade la llave de cierre
+                                java -jar /home/agent2/wiremock/wiremock-standalone-3.3.1.jar --port 9090 --root-dir /home/agent2/wiremock &
+                                export PYTHONPATH=${WORKSPACE} // CORREGIDO
                                 
                                 sleep 15
                                 
-                                /usr/bin/pytest --junitxml=result-rest.xml test/rest // RUTA PYTEST CORREGIDA
+                                /usr/bin/pytest --junitxml=result-rest.xml test/rest
                             '''
                             stash name:'rest-res', includes:'result-rest.xml'
                         }
@@ -72,7 +75,7 @@ pipeline {
         }
 
         stage('Results') {
-            // Asignar al Master
+            // Asignar al Master (Windows)
             agent { label 'master' } 
             steps {
                 unstash name:'unit-res'
