@@ -6,13 +6,13 @@ pipeline {
 
     stages {
         stage('Get Code') {
-            // Asignar al Master (que es Windows en tu caso)
+            // Asignar al Master (Windows)
             agent { label 'master' } 
             steps {
                 git 'https://github.com/JulioEguis/helloworld.git'
                 echo WORKSPACE
                 
-                // CORRECCIÓN: Cambiar 'sh' (Linux) por 'bat' (Windows)
+                // CORRECCIÓN: Usar bat en Windows
                 bat 'dir' 
                 
                 stash name:'code', includes:'**'
@@ -31,8 +31,6 @@ pipeline {
         {
             parallel
             {
-                // Las ramas 'Unit' y 'Rest' se ejecutan en agent1 y agent2 (Linux), 
-                // por lo que ellas sí deben usar 'sh'. Esas ramas ya están correctas.
                 stage('Unit') {
                     agent {label 'agent1'}
                     steps {
@@ -61,12 +59,14 @@ pipeline {
                                 sleep 4
 
                                 java -jar /home/agent2/wiremock/wiremock-standalone-3.3.1.jar --port 9090 --root-dir /home/agent2/wiremock &
+                                
                                 export PYTHONPATH=${WORKSPACE}
                                 
                                 sleep 15
                                 
                                 /usr/bin/pytest --junitxml=result-rest.xml test/rest
                             '''
+                            // El stash se ejecuta solo si el pytest tuvo éxito
                             stash name:'rest-res', includes:'result-rest.xml'
                         }
                     }   
@@ -79,7 +79,8 @@ pipeline {
             agent { label 'master' } 
             steps {
                 unstash name:'unit-res'
-                unstash name:'rest-res'
+                // Esta línea sólo funcionará si Rest terminó y guardó el stash
+                unstash name:'rest-res' 
                 junit 'result*.xml' 
             }
         }
