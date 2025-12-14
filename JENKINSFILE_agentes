@@ -36,7 +36,7 @@ pipeline {
                             sh '''
                                 ls -la
                                 export PYTHONPATH=${WORKSPACE}
-                                /home/agent1/.local/bin/pytest --junitxml=result-unit.xml test/unit
+                                /usr/bin/pytest --junitxml=result-unit.xml test/unit
                             '''
                             stash name:'unit-res', includes:'result-unit.xml'
                        }
@@ -60,7 +60,7 @@ pipeline {
                             
                             sleep 15
                             
-                            /home/agent2/.local/bin/pytest --junitxml=result-rest.xml test/rest
+                            /usr/bin/pytest --junitxml=result-rest.xml test/rest // ¡RUTA CORREGIDA A /usr/bin/pytest!
                         '''
                       }
                       stash name:'rest-res', includes:'result-rest.xml'
