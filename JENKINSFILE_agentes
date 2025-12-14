@@ -6,21 +6,16 @@ pipeline {
 
     stages {
         stage('Get Code') {
-            // Asignar al Master (Windows)
             agent { label 'master' } 
             steps {
                 git 'https://github.com/JulioEguis/helloworld.git'
                 echo WORKSPACE
-                
-                // CORRECCIÓN: Usar bat en Windows
                 bat 'dir' 
-                
                 stash name:'code', includes:'**'
             }
         }
     
         stage('Build') {
-            // Asignar al Master (Windows)
             agent { label 'master' } 
             steps {
                 echo 'Eyyy, esto es Python. No hay que compilar nada!!!'
@@ -52,21 +47,26 @@ pipeline {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             unstash name:'code'
                             sh '''
-                                export FLASK_APP=app/api.py
+                                # 1. COPIAR MAPPINGS AL DIRECTORIO DE WIREMOCK
+                                cp -r test/wiremock/* /home/agent2/wiremock/
+                                ls -la /home/agent2/wiremock/mappings/
                                 
+                                # 2. INICIAR FLASK
+                                export FLASK_APP=app/api.py
                                 /usr/bin/flask run & 
 
                                 sleep 4
-
+                                
+                                # 3. INICIAR WIREMOCK (Asegúrate de que el sleep de 4 segundos sea suficiente para Flask)
                                 java -jar /home/agent2/wiremock/wiremock-standalone-3.3.1.jar --port 9090 --root-dir /home/agent2/wiremock &
                                 
                                 export PYTHONPATH=${WORKSPACE}
                                 
+                                # 4. ESPERAR Y EJECUTAR PRUEBAS
                                 sleep 15
                                 
                                 /usr/bin/pytest --junitxml=result-rest.xml test/rest
                             '''
-                            // El stash se ejecuta solo si el pytest tuvo éxito
                             stash name:'rest-res', includes:'result-rest.xml'
                         }
                     }   
@@ -75,11 +75,9 @@ pipeline {
         }
 
         stage('Results') {
-            // Asignar al Master (Windows)
             agent { label 'master' } 
             steps {
                 unstash name:'unit-res'
-                // Esta línea sólo funcionará si Rest terminó y guardó el stash
                 unstash name:'rest-res' 
                 junit 'result*.xml' 
             }
