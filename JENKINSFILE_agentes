@@ -51,7 +51,7 @@ pipeline {
                         unstash name:'code'
                         sh '''
                             export FLASK_APP=app/api.py                          
-                            /home/agent2/.local/bin/flask run &
+                            /usr/bin/flask run &
 
                             sleep 4
 
