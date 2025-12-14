@@ -89,7 +89,7 @@ pipeline {
 
                                 # 2. INICIAR FLASK
                                 export FLASK_APP=app/api.py
-                                # Iniciar la API en background (&). Usamos /usr/bin/flask (ruta de instalación a nivel de sistema).
+                                
                                 /usr/bin/flask run & 
 
                                 sleep 4
