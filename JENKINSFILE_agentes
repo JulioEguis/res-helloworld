@@ -1,12 +1,12 @@
 pipeline {
-    agent any
+    agent none // CORRECCIÓN 1: Flujo principal en el Master/Built-in Node
 
     options { skipDefaultCheckout() }
 
     stages {
         stage('Get Code') {
+            agent { label 'master' } // CORRECCIÓN 2: Asignar al Master
             steps {
-                // Obtener código del repo (funciona solo si Git está configurado correctamente en Jenkins)
                 git 'https://github.com/JulioEguis/helloworld.git'
                 echo WORKSPACE
                 
@@ -19,6 +19,7 @@ pipeline {
         }
     
         stage('Build') {
+            agent { label 'master' } // CORRECCIÓN 2: Asignar al Master
            steps {
               echo 'Eyyy, esto es Python. No hay que compilar nada!!!'
            }
@@ -71,6 +72,7 @@ pipeline {
         }
 
         stage('Results') {
+            agent { label 'master' } // CORRECCIÓN 2: Asignar al Master
             steps {
                 unstash name:'unit-res'
                 unstash name:'rest-res'
