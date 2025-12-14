@@ -1,5 +1,5 @@
 pipeline {
-    // Flujo principal en el Master (Windows)
+    // Flujo principal sin agente asignado inicialmente
     agent none 
 
     options { skipDefaultCheckout() }
@@ -49,9 +49,14 @@ pipeline {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             unstash name:'code'
                             sh '''
-                                # 🚨 SOLUCIÓN AL 404: COPIAR LOS MAPPINGS ANTES DE INICIAR WIREMOCK
-                                # Copia test/wiremock/mappings/sqrt64.json a /home/agent2/wiremock/mappings/
+                                echo "--- CONTENIDO DE ORIGEN (REPO) ---"
+                                ls -la test/wiremock/mappings/
+                                
+                                # Copia recursiva de mappings al directorio root de WireMock
                                 cp -r test/wiremock/* /home/agent2/wiremock/
+
+                                echo "--- CONTENIDO DE DESTINO (WIREMOCK) ---"
+                                ls -la /home/agent2/wiremock/mappings/
                                 
                                 export FLASK_APP=app/api.py
                                 /usr/bin/flask run & 
