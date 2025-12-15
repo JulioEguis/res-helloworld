@@ -24,6 +24,25 @@ class TestApi(unittest.TestCase):
         self.assertEqual(
             response.read().decode(), "3", "ERROR ADD"
         )
+    def test_api_multiply(self):
+    url = f"{BASE_URL}/calc/multiply/3/3"
+    response = urlopen(url, timeout=DEFAULT_TIMEOUT)
+    self.assertEqual(
+        response.status, http.client.OK, f"Error en la petición API a {url}"
+    )
+    self.assertEqual(
+        response.read().decode(), "9", "ERROR ADD"
+    )
+
+    def test_api_divide(self):
+    url = f"{BASE_URL}/calc/divide/12/3"
+    response = urlopen(url, timeout=DEFAULT_TIMEOUT)
+    self.assertEqual(
+        response.status, http.client.OK, f"Error en la petición API a {url}"
+    )
+    self.assertEqual(
+        response.read().decode(), "4.0", "ERROR ADD"
+    )
 
     def test_api_sqrt(self):
         url = f"{BASE_URL_MOCK}/calc/sqrt/64"
@@ -34,6 +53,15 @@ class TestApi(unittest.TestCase):
         self.assertEqual(
             response.read().decode(), "8", "ERROR SQRT"
         )
+
+    def test_api_divide_by_zero(self):
+    url = f"{BASE_URL}/calc/divide/10/0"
+    try:
+        urlopen(url, timeout=DEFAULT_TIMEOUT)
+        self.fail("La división por cero debería devolver error 406")
+    except Exception as e:
+        self.assertIn("HTTP Error 406", str(e), "No devuelve HTTP 406 al dividir por cero")
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
